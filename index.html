@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Game Arcade Fresh - Casual Edition</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #112233, #050b14);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Canvas Khusus Efek Kembang Api */
+        #fireworks-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 0 20px rgba(0, 240, 255, 0.2);
+            border-radius: 24px;
+            width: 90%;
+            max-width: 650px;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 18px;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .hearts {
+            color: #ff2a6d;
+            font-size: 1.4rem;
+            letter-spacing: 4px;
+            filter: drop-shadow(0 0 8px #ff2a6d);
+        }
+
+        .timer-box {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #05d9e8;
+            text-shadow: 0 0 10px #05d9e8;
+            transition: all 0.2s ease;
+        }
+
+        .timer-box.urgent {
+            color: #ff0055 !important;
+            text-shadow: 0 0 15px #ff0055, 0 0 25px #ff0055 !important;
+            animation: pulse-urgent 0.5s infinite alternate;
+        }
+
+        @keyframes pulse-urgent {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.25); }
+        }
+
+        .round-tag {
+            font-size: 0.85rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00f0ff, #ff0077);
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        .info-box {
+            background: rgba(5, 217, 232, 0.1);
+            border: 1px solid #05d9e8;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            color: #d1f7ff;
+        }
+
+        .game-area {
+            min-height: 230px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .btn-3d {
+            background: linear-gradient(180deg, #ff416c 0%, #ff4b2b 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #b32000, 0 8px 15px rgba(0,0,0,0.4);
+            transition: all 0.1s ease;
+            margin: 6px;
+        }
+
+        .btn-3d:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #b32000, 0 3px 8px rgba(0,0,0,0.4);
+        }
+
+        .btn-action {
+            background: linear-gradient(180deg, #11998e 0%, #38ef7d 100%);
+            box-shadow: 0 5px 0 #0b5c55;
+        }
+
+        .btn-hint {
+            background: linear-gradient(180deg, #f7b731 0%, #ffa801 100%);
+            box-shadow: 0 5px 0 #d68000;
+        }
+
+        .mole-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .mole-hole {
+            height: 75px;
+            background: rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.2rem;
+            cursor: pointer;
+        }
+
+        .maze-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 220px;
+            height: 220px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 12px;
+            border: 2px solid #05d9e8;
+        }
+
+        .maze-cell {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+        }
+
+        .maze-wall {
+            background: #ff2a6d !important;
+            border-radius: 8px;
+        }
+
+        .controls-dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(2, 50px);
+            gap: 6px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .dpad-btn {
+            width: 50px;
+            height: 50px;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+
+        .bar-container {
+            width: 100%;
+            max-width: 350px;
+            height: 35px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+            border: 2px solid #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .target-zone {
+            position: absolute;
+            left: 35%;
+            width: 30%;
+            height: 100%;
+            background: rgba(56, 239, 125, 0.6);
+            border-left: 2px solid #38ef7d;
+            border-right: 2px solid #38ef7d;
+        }
+
+        .slider-pointer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 10px;
+            height: 100%;
+            background: #ff0055;
+            box-shadow: 0 0 10px #ff0055;
+        }
+
+        .audio-toggle {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .hint-box-style {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 168, 1, 0.2);
+            border: 1px solid #ffa801;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: linear-gradient(135deg, #112233, #050b14);
+            border: 2px solid #05d9e8;
+            border-radius: 20px;
+            padding: 20px;
+            width: 85%;
+            max-width: 400px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="fireworks-canvas"></canvas>
+
+    <div class="game-card" id="card">
+        <button class="audio-toggle" onclick="toggleAudio()">🔊 Audio: ON</button>
+
+        <div class="modal-overlay" id="custom-modal">
+            <div class="modal-box" id="modal-container">
+                <div class="modal-title" id="modal-title" style="font-size:1.4rem; color:#ff758c; margin-bottom:10px;">INFO</div>
+                <div class="modal-desc" id="modal-desc" style="margin-bottom:15px; line-height:1.4;">Pesan</div>
+                <button class="btn-3d btn-action" id="modal-btn" onclick="closeModal()">Lanjut</button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="round-tag" id="round-title">Ronde 1/5</div>
+            <div class="hearts" id="hearts">❤️❤️❤️</div>
+            <div class="timer-box" id="timer-box">⏱️ <span id="timer">25</span>s</div>
+        </div>
+
+        <h2 id="game-name" style="margin-bottom: 6px; font-size: 1.5rem; color: #00f0ff;">Pukul Hati Pop-Up</h2>
+        <div class="info-box" id="how-to-play">
+            💡 <b>Cara Main:</b> Klik hati 💖 yang muncul sebanyak 3 kali!
+        </div>
+
+        <div class="game-area" id="game-area"></div>
+
+        <div id="footer-actions">
+            <button class="btn-3d btn-hint" onclick="giveHint()">💡 Minta Clue</button>
+            <div id="hint-text" class="hint-box-style"></div>
+        </div>
+    </div>
+
+    <script>
+        let modalCallback = null;
+
+        function showModal(title, desc, btnText = "Lanjut", callback = null) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerHTML = desc;
+            document.getElementById('modal-btn').innerText = btnText;
+            document.getElementById('custom-modal').classList.add('active');
+            modalCallback = callback;
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.remove('active');
+            stopFireworks();
+            if (modalCallback) {
+                const cb = modalCallback;
+                modalCallback = null;
+                cb();
+            }
+        }
+
+        let audioCtx = null;
+        let isAudioMuted = false;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSound(freq, type = 'sine', duration = 0.1, gainVal = 0.1) {
+            if (isAudioMuted || !audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        // --- LAGU KEMENANGAN BIASA (Ronde 1-4) ---
+        function playVictoryMelody() {
+            if (isAudioMuted || !audioCtx) return;
+            
+            const notes = [
+                { freq: 523.25, duration: 0.12, delay: 0 },
+                { freq: 659.25, duration: 0.12, delay: 0.12 },
+                { freq: 783.99, duration: 0.12, delay: 0.24 },
+                { freq: 1046.50, duration: 0.2, delay: 0.36 }
+            ];
+
+            notes.forEach(note => {
+                setTimeout(() => {
+                    playSound(note.freq, 'triangle', note.duration, 0.25);
+                }, note.delay * 1000);
+            });
+        }
+
+        // --- LAGU KEMENANGAN FINAL MEGAH ---
+        function playFinalGrandVictory() {
+            if (isAudioMuted || !audioCtx) return;
+
+            const fanfare = [
+                { freq: 523.25, type: 'triangle', duration: 0.15, delay: 0 },
+                { freq: 523.25, type: 'triangle', duration: 0.15, delay: 0.15 },
+                { freq: 523.25, type: 'triangle', duration: 0.15, delay: 0.30 },
+                { freq: 659.25, type: 'triangle', duration: 0.35, delay: 0.45 },
+                { freq: 783.99, type: 'triangle', duration: 0.35, delay: 0.75 },
+                { freq: 1046.50, type: 'triangle', duration: 0.70, delay: 1.05 }
+            ];
+
+            fanfare.forEach(note => {
+                setTimeout(() => {
+                    playSound(note.freq, note.type, note.duration, 0.35);
+                }, note.delay * 1000);
+            });
+        }
+
+        // --- ANIMASI KEMBANG API (FIREWORKS EFFECT) ---
+        let fireworksActive = false;
+        let fireworksAnim = null;
+        let particles = [];
+
+        function launchFireworks() {
+            const canvas = document.getElementById('fireworks-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            fireworksActive = true;
+            particles = [];
+
+            function createBurst() {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * (canvas.height * 0.6);
+                const colors = ['#ff0055', '#00e5ff', '#ffcc00', '#38ef7d', '#ff758c', '#ffffff'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+
+                for (let i = 0; i < 40; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 6 + 2;
+                    particles.push({
+                        x: x, y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        alpha: 1,
+                        color: color,
+                        size: Math.random() * 3 + 2
+                    });
+                }
+            }
+
+            let burstTimer = setInterval(() => {
+                if (fireworksActive) createBurst();
+                else clearInterval(burstTimer);
+            }, 300);
+
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    let p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.08; // Gravitas
+                    p.alpha -= 0.015;
+
+                    ctx.globalAlpha = Math.max(p.alpha, 0);
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (p.alpha <= 0) particles.splice(i, 1);
+                }
+                ctx.globalAlpha = 1;
+                if (fireworksActive || particles.length > 0) {
+                    fireworksAnim = requestAnimationFrame(render);
+                }
+            }
+            render();
+        }
+
+        function stopFireworks() {
+            fireworksActive = false;
+            const canvas = document.getElementById('fireworks-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (fireworksAnim) cancelAnimationFrame(fireworksAnim);
+        }
+
+        function toggleAudio() {
+            isAudioMuted = !isAudioMuted;
+            document.querySelector('.audio-toggle').innerText = isAudioMuted ? "🔇 Audio: OFF" : "🔊 Audio: ON";
+            if (!isAudioMuted && !audioCtx) initAudio();
+        }
+
+        let currentRound = 1;
+        let lives = 3;
+        let timeLeft = 25;
+        let timerId = null;
+        let roundData = {};
+
+        function startTimer(seconds) {
+            clearInterval(timerId);
+            timeLeft = seconds;
+            const timerBox = document.getElementById('timer-box');
+            timerBox.classList.remove('urgent');
+            document.getElementById('timer').innerText = timeLeft;
+
+            timerId = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+
+                if (timeLeft <= 5 && timeLeft > 0) {
+                    timerBox.classList.add('urgent');
+                    playSound(200, 'sawtooth', 0.1, 0.25);
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    timerBox.classList.remove('urgent');
+                    handleWrongAnswer("Waktu habis, santai aja coba lagi!");
+                }
+            }, 1000);
+        }
+
+        function updateHeartsUI() {
+            let hStr = "";
+            for(let i=0; i<3; i++) hStr += i < lives ? "❤️" : "🖤";
+            document.getElementById('hearts').innerText = hStr;
+        }
+
+        function handleWrongAnswer(msg = "Belum tepat nih!") {
+            lives--;
+            updateHeartsUI();
+
+            if (lives <= 0) {
+                clearInterval(timerId);
+                showModal("🌸 TETAP SEMANGAT!", "Yuk ulang lagi ronde ini, pasti bisa!", "Main Lagi", () => {
+                    restartGame();
+                });
+            } else {
+                showModal("💡 OOPS!", `${msg}<br>Sisa kesempatan: <b>${lives}</b>`, "Lanjut", () => {
+                    setupRound(currentRound);
+                });
+            }
+        }
+
+        function nextRound() {
+            if (currentRound < 5) {
+                playVictoryMelody();
+                currentRound++;
+                lives = 3;
+                updateHeartsUI();
+                setupRound(currentRound);
+            } else {
+                clearInterval(timerId);
+                playFinalGrandVictory();
+                launchFireworks(); // <--- Menyalakan Kembang Api Pas Game Tamat
+                showModal(
+                    "🎉 GAME TAMAT! 🎉", 
+                    "<b>KAMU HEBAT BANGET!</b><br>Semua mini-game berhasil kamu selesaikan dengan mulus!", 
+                    "💖 MAIN LAGI BARENG", 
+                    () => { restartGame(); }
+                );
+            }
+        }
+
+        function restartGame() {
+            currentRound = 1;
+            lives = 3;
+            updateHeartsUI();
+            setupRound(1);
+        }
+
+        function giveHint() {
+            initAudio();
+            const hintEl = document.getElementById('hint-text');
+            let text = "";
+
+            if (currentRound === 1) text = `💡 CLUE: Klik stiker hati 💖 pas lagi muncul!`;
+            else if (currentRound === 2) text = `💡 CLUE: Arahkan anak ayam 🐥 ke rumahnya 🏡 pakai tombol d-pad!`;
+            else if (currentRound === 3) text = `💡 CLUE: Tekan tombol STOP waktu garis merah tepat di area HIJAU!`;
+            else if (currentRound === 4) text = `💡 CLUE: Tekan 3 tombol warna sesuai urutan nada yang baru aja menyala!`;
+            else if (currentRound === 5) text = `💡 CLUE: Pilih Batu/Gunting/Kertas sesukamu, pasti seru!`;
+
+            hintEl.innerText = text;
+            hintEl.style.display = "block";
+            playSound(523.25, 'sine', 0.15, 0.2);
+        }
+
+        function setupRound(round) {
+            initAudio();
+            document.getElementById('round-title').innerText = `Ronde ${round}/5`;
+            document.getElementById('hint-text').style.display = 'none';
+
+            const area = document.getElementById('game-area');
+            const nameEl = document.getElementById('game-name');
+            const howEl = document.getElementById('how-to-play');
+            area.innerHTML = '';
+
+            if (round === 1) {
+                nameEl.innerText = "Ronde 1: Tangkap Hati";
+                howEl.innerHTML = "💡 <b>Cara Main:</b> Tangkap/Klik stiker hati 💖 3 kali!";
+                startTimer(20);
+
+                roundData.hits = 0;
+                let html = '<div class="mole-grid">';
+                for(let i=0; i<6; i++) {
+                    html += `<div class="mole-hole" id="hole-${i}" onclick="hitHeart(${i})"></div>`;
+                }
+                html += '</div>';
+                area.innerHTML = html;
+                spawnHeart();
+            }
+            else if (round === 2) {
+                nameEl.innerText = "Ronde 2: Antar Si Ayam";
+                howEl.innerHTML = "💡 <b>Cara Main:</b> Antarkan 🐥 ke rumah 🏡!";
+                startTimer(15);
+
+                roundData.playerPos = {r: 0, c: 0};
+                roundData.goalPos = {r: 3, c: 3};
+                roundData.walls = ["1-1", "2-1", "0-2"];
+
+                renderMaze();
+            }
+            else if (round === 3) {
+                nameEl.innerText = "Ronde 3: Tes Refleks Cepat";
+                howEl.innerHTML = "💡 <b>Cara Main:</b> Tekan tombol STOP saat garis berada di area HIJAU!";
+                startTimer(15);
+
+                area.innerHTML = `
+                    <div class="bar-container">
+                        <div class="target-zone"></div>
+                        <div class="slider-pointer" id="pointer"></div>
+                    </div>
+                    <button class="btn-3d btn-action" style="margin-top:20px;" onclick="stopReflexBar()">STOP!</button>
+                `;
+                startReflexBar();
+            }
+            else if (round === 4) {
+                nameEl.innerText = "Ronde 4: Cocokkan 3 Nada Musik";
+                howEl.innerHTML = "💡 <b>Cara Main:</b> Dengarkan & ikuti urutan <b>3 nada</b> yang menyala!";
+                startTimer(20);
+
+                roundData.colors = ['MERAH', 'BIRU', 'KUNING'];
+                roundData.seq = [
+                    Math.floor(Math.random() * 3),
+                    Math.floor(Math.random() * 3),
+                    Math.floor(Math.random() * 3)
+                ];
+                roundData.playerSeq = [];
+
+                let html = '<div style="display:flex; gap:12px;">';
+                const bgColors = ['#ff0055', '#00e5ff', '#ffcc00'];
+                bgColors.forEach((c, idx) => {
+                    html += `<button class="btn-3d" id="sound-btn-${idx}" style="background:${c}; width:75px; height:75px; font-size:1.5rem;" onclick="clickSoundPad(${idx})">🎵</button>`;
+                });
+                html += '</div>';
+                area.innerHTML = html;
+
+                setTimeout(() => playSoundSequence(), 600);
+            }
+            else if (round === 5) {
+                nameEl.innerText = "Ronde 5: Suwit Santai Final";
+                howEl.innerHTML = "💡 <b>Cara Main:</b> Pilih jagoanmu buat ngalahin bot!";
+                startTimer(15);
+
+                area.innerHTML = `
+                    <div style="display:flex; gap:12px;">
+                        <button class="btn-3d" style="font-size:2rem;" onclick="playRPS('✊')">✊</button>
+                        <button class="btn-3d" style="font-size:2rem;" onclick="playRPS('✋')">✋</button>
+                        <button class="btn-3d" style="font-size:2rem;" onclick="playRPS('✌️')">✌️</button>
+                    </div>
+                `;
+            }
+        }
+
+        let heartHole = -1;
+        let moleInterval = null;
+        function spawnHeart() {
+            if (roundData.hits >= 3) return;
+            if (moleInterval) clearInterval(moleInterval);
+
+            for(let i=0; i<6; i++) {
+                let el = document.getElementById(`hole-${i}`);
+                if(el) el.innerText = '';
+            }
+
+            heartHole = Math.floor(Math.random() * 6);
+            let holeEl = document.getElementById(`hole-${heartHole}`);
+            if(holeEl) holeEl.innerText = '💖';
+
+            moleInterval = setInterval(() => {
+                spawnHeart();
+            }, 1100);
+        }
+
+        function hitHeart(idx) {
+            playSound(600, 'sine', 0.1, 0.2);
+            if (idx === heartHole) {
+                roundData.hits++;
+                if (roundData.hits >= 3) {
+                    clearInterval(moleInterval);
+                    clearInterval(timerId);
+                    showModal("✨ MANTAP!", "Kamu berhasil menangkap 3 Hati!", "Ronde Berikutnya", () => { nextRound(); });
+                } else {
+                    spawnHeart();
+                }
+            }
+        }
+
+        function renderMaze() {
+            const area = document.getElementById('game-area');
+            let html = '<div class="maze-grid">';
+            for(let r=0; r<4; r++) {
+                for(let c=0; c<4; c++) {
+                    let isPlayer = (r === roundData.playerPos.r && c === roundData.playerPos.c);
+                    let isGoal = (r === roundData.goalPos.r && c === roundData.goalPos.c);
+                    let isWall = roundData.walls.includes(`${r}-${c}`);
+
+                    let content = isPlayer ? '🐥' : (isGoal ? '🏡' : '');
+                    let wallClass = isWall ? 'maze-wall' : '';
+
+                    html += `<div class="maze-cell ${wallClass}">${content}</div>`;
+                }
+            }
+            html += '</div>';
+
+            html += `
+                <div class="controls-dpad">
+                    <div></div>
+                    <button class="btn-3d dpad-btn" onclick="movePlayer(-1, 0)">⬆️</button>
+                    <div></div>
+                    <button class="btn-3d dpad-btn" onclick="movePlayer(0, -1)">⬅️</button>
+                    <button class="btn-3d dpad-btn" onclick="movePlayer(1, 0)">⬇️</button>
+                    <button class="btn-3d dpad-btn" onclick="movePlayer(0, 1)">➡️</button>
+                </div>
+            `;
+            area.innerHTML = html;
+        }
+
+        function movePlayer(dr, dc) {
+            playSound(500, 'sine', 0.08, 0.1);
+            let nr = roundData.playerPos.r + dr;
+            let nc = roundData.playerPos.c + dc;
+
+            if (nr >= 0 && nr < 4 && nc >= 0 && nc < 4) {
+                if (roundData.walls.includes(`${nr}-${nc}`)) return;
+                roundData.playerPos = {r: nr, c: nc};
+                renderMaze();
+
+                if (nr === roundData.goalPos.r && nc === roundData.goalPos.c) {
+                    clearInterval(timerId);
+                    showModal("✨ KEREN!", "Ayam berhasil pulang ke rumahnya!", "Ronde Berikutnya", () => { nextRound(); });
+                }
+            }
+        }
+
+        let reflexPos = 0;
+        let reflexDir = 1;
+        let reflexAnim = null;
+
+        function startReflexBar() {
+            reflexPos = 0;
+            reflexDir = 2.5;
+
+            function animate() {
+                const pointer = document.getElementById('pointer');
+                if(!pointer) return;
+                reflexPos += reflexDir;
+                if(reflexPos >= 95 || reflexPos <= 0) reflexDir *= -1;
+                pointer.style.left = reflexPos + '%';
+                reflexAnim = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        function stopReflexBar() {
+            if(reflexAnim) cancelAnimationFrame(reflexAnim);
+            if (reflexPos >= 35 && reflexPos <= 65) {
+                clearInterval(timerId);
+                showModal("✨ PASS!", "Refleks kamu jempolan banget!", "Ronde Berikutnya", () => { nextRound(); });
+            } else {
+                handleWrongAnswer("Garisnya belum di area hijau, coba lagi!");
+            }
+        }
+
+        function playSoundSequence() {
+            let delay = 0;
+            roundData.seq.forEach((noteIdx) => {
+                setTimeout(() => {
+                    let btn = document.getElementById(`sound-btn-${noteIdx}`);
+                    if(btn) {
+                        btn.style.filter = "brightness(2.5)";
+                        playSound(400 + noteIdx * 150, 'triangle', 0.3, 0.3);
+                        setTimeout(() => { btn.style.filter = "none"; }, 350);
+                    }
+                }, delay);
+                delay += 550;
+            });
+        }
+
+        function clickSoundPad(idx) {
+            playSound(400 + idx * 150, 'triangle', 0.15, 0.2);
+            roundData.playerSeq.push(idx);
+
+            const currentIndex = roundData.playerSeq.length - 1;
+
+            if (roundData.playerSeq[currentIndex] !== roundData.seq[currentIndex]) {
+                handleWrongAnswer("Urutan nadanya belum tepat, coba diingat lagi ya!");
+                return;
+            }
+
+            if (roundData.playerSeq.length === roundData.seq.length) {
+                clearInterval(timerId);
+                showModal("✨ INGATAN TAJAM!", "Kamu berhasil mencocokkan 3 urutan nada dengan sempurna!", "Ronde Berikutnya", () => { 
+                    nextRound(); 
+                });
+            }
+        }
+
+        function playRPS(playerChoice) {
+            playSound(600, 'sine', 0.1, 0.2);
+            clearInterval(timerId);
+            showModal("✨ WINNER!", `Kamu pilih <b>${playerChoice}</b> dan berhasil menang!`, "Tamat", () => {
+                nextRound();
+            });
+        }
+
+        window.onload = () => {
+            setupRound(1);
+        };
+    </script>
+</body>
+</html>
